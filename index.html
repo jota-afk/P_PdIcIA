@@ -16,21 +16,213 @@
             text-align: center;
             color: #b0b0b0; /* Gris medio */
         }
+        .file-container {
+            margin-bottom: 40px;
+            border: 1px solid #555;
+            padding: 20px;
+            border-radius: 5px;
+            background-color: #3a3a3a;
+        }
         table {
             width: 100%;
             border-collapse: collapse;
             margin: 20px 0;
-            background-color: #3a3a3a; /* Gris más claro */
+            background-color: #3a3a3a;
         }
         th, td {
-            border: 1px solid #555; /* Gris oscuro */
+            border: 1px solid #555;
             padding: 8px;
             text-align: left;
         }
         th {
-            background-color: #4a4a4a; /* Gris medio oscuro */
+            background-color: #4a4a4a;
             color: #e0e0e0;
         }
         td {
             background-color: #3a3a3a;
             color: #e0e0e0;
+        }
+        td[contenteditable="true"] {
+            cursor: text;
+        }
+        button {
+            background-color: #555;
+            color: #e0e0e0;
+            border: none;
+            padding: 10px 20px;
+            margin: 10px 5px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #666;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .alert {
+            display: none;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #ff6b6b;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Simulador de Archivo Excel Editable</h1>
+        <button onclick="crearNuevoArchivo()">Crear Nuevo Archivo</button>
+        <div id="alert" class="alert"></div>
+        <div id="archivos">
+            <!-- Aquí se agregarán las tablas dinámicamente -->
+        </div>
+    </div>
+
+    <script>
+        let archivoCount = 0;
+
+        // Función para mostrar alertas personalizadas
+        function mostrarAlerta(mensaje) {
+            const alertDiv = document.getElementById('alert');
+            alertDiv.textContent = mensaje;
+            alertDiv.style.display = 'block';
+            setTimeout(() => {
+                alertDiv.style.display = 'none';
+            }, 3000);
+        }
+
+        // Función para crear un nuevo archivo (tabla)
+        function crearNuevoArchivo() {
+            archivoCount++;
+            const archivosDiv = document.getElementById('archivos');
+            const fileDiv = document.createElement('div');
+            fileDiv.className = 'file-container';
+            fileDiv.innerHTML = `
+                <h2>Archivo ${archivoCount}</h2>
+                <button onclick="agregarFila(this)">Agregar Fila</button>
+                <button onclick="guardarCambios(this)">Guardar Cambios</button>
+                <table id="tabla-${archivoCount}">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nombre</th>
+                            <th>Precio</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${generarProductos()}
+                    </tbody>
+                </table>
+            `;
+            archivosDiv.appendChild(fileDiv);
+        }
+
+        // Función para generar 50 productos inventados
+        function generarProductos() {
+            const productos = [];
+            for (let i = 1; i <= 50; i++) {
+                const id = String(i).padStart(3, '0');
+                const nombre = `Producto ${String.fromCharCode(65 + (i % 26))}${Math.floor(i / 26) + 1}`;
+                const precio = (Math.random() * 1000).toFixed(2);
+                productos.push(`
+                    <tr>
+                        <td contenteditable="true">${id}</td>
+                        <td contenteditable="true">${nombre}</td>
+                        <td contenteditable="true" onblur="validarPrecio(this)">${precio}</td>
+                        <td><button onclick="eliminarFila(this)">Eliminar</button></td>
+                    </tr>
+                `);
+            }
+            return productos.join('');
+        }
+
+        // Función para validar precio
+        function validarPrecio(cell) {
+            const precio = parseFloat(cell.textContent);
+            if (isNaN(precio) || precio < 0) {
+                mostrarAlerta('El precio debe ser un número positivo. Se ha reseteado a 0.00.');
+                cell.textContent = '0.00';
+            }
+        }
+
+        // Función para agregar una fila
+        function agregarFila(button) {
+            const table = button.nextElementSibling;
+            const tbody = table.querySelector('tbody');
+            const newRow = document.createElement('tr');
+            newRow.innerHTML = `
+                <td contenteditable="true">Nuevo ID</td>
+                <td contenteditable="true">Nuevo Nombre</td>
+                <td contenteditable="true" onblur="validarPrecio(this)">0.00</td>
+                <td><button onclick="eliminarFila(this)">Eliminar</button></td>
+            `;
+            tbody.appendChild(newRow);
+            mostrarAlerta('Nueva fila agregada.');
+        }
+
+        // Función para eliminar una fila
+        function eliminarFila(button) {
+            const row = button.closest('tr');
+            row.remove();
+            mostrarAlerta('Fila eliminada.');
+        }
+
+        // Función para guardar cambios (guarda en localStorage)
+        function guardarCambios(button) {
+            const table = button.nextElementSibling;
+            const rows = table.querySelectorAll('tbody tr');
+            const data = [];
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td[contenteditable]');
+                data.push({
+                    id: cells[0].textContent,
+                    nombre: cells[1].textContent,
+                    precio: cells[2].textContent
+                });
+            });
+            localStorage.setItem(`archivo-${table.id}`, JSON.stringify(data));
+            mostrarAlerta('Cambios guardados en el navegador.');
+        }
+
+        // Cargar datos guardados al crear archivo (si existen)
+        function cargarDatos(table) {
+            const data = localStorage.getItem(`archivo-${table.id}`);
+            if (data) {
+                const parsedData = JSON.parse(data);
+                const tbody = table.querySelector('tbody');
+                tbody.innerHTML = '';
+                parsedData.forEach(item => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td contenteditable="true">${item.id}</td>
+                        <td contenteditable="true">${item.nombre}</td>
+                        <td contenteditable="true" onblur="validarPrecio(this)">${item.precio}</td>
+                        <td><button onclick="eliminarFila(this)">Eliminar</button></td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+        }
+
+        // Modificar crearNuevoArchivo para cargar datos
+        const originalCrearNuevoArchivo = crearNuevoArchivo;
+        crearNuevoArchivo = function() {
+            originalCrearNuevoArchivo();
+            const table = document.getElementById(`tabla-${archivoCount}`);
+            cargarDatos(table);
+        };
+
+        // Crear el primer archivo al cargar la página
+        window.onload = function() {
+            crearNuevoArchivo();
+        };
+    </script>
+</body>
+</html>
