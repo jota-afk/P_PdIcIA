@@ -76,7 +76,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>Simulador de Archivo Excel Editable</h1>
+        <h1>Simulador de Excel Editable</h1>
         <button onclick="crearNuevoArchivo()">Crear Nuevo Archivo</button>
         <div id="alert" class="alert"></div>
         <div id="archivos">
@@ -86,6 +86,20 @@
 
     <script>
         let archivoCount = 0;
+
+        // Lista de 50 productos reales de la canasta familiar
+        const productosReales = [
+            "Arroz", "Frijoles", "Azúcar", "Harina", "Aceite de cocina", "Leche", "Pan", "Huevos", "Carne de res", "Pollo",
+            "Pescado", "Papas", "Cebollas", "Tomates", "Plátanos", "Manzanas", "Naranjas", "Zanahorias", "Lechuga", "Espinacas",
+            "Queso", "Yogurt", "Mantequilla", "Café", "Té", "Sal", "Pimienta", "Vinagre", "Salsa de tomate", "Pasta",
+            "Cereal", "Jabón de baño", "Shampoo", "Pasta de dientes", "Cepillo de dientes", "Papel higiénico", "Detergente", "Limpiador multiusos", "Bolsa de basura",
+            "Esponja", "Toallas de papel", "Leche en polvo", "Atún en lata", "Sardinas", "Galletas", "Chocolate", "Helado", "Agua embotellada", "Jugo"
+        ];
+
+        // Función para formatear números enteros con puntos (ej. 3000 -> 3.000)
+        function formatearPrecio(precio) {
+            return precio.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        }
 
         // Función para mostrar alertas personalizadas
         function mostrarAlerta(mensaje) {
@@ -124,18 +138,19 @@
             archivosDiv.appendChild(fileDiv);
         }
 
-        // Función para generar 50 productos inventados
+        // Función para generar 50 productos con nombres reales y precios enteros formateados
         function generarProductos() {
             const productos = [];
-            for (let i = 1; i <= 50; i++) {
-                const id = String(i).padStart(3, '0');
-                const nombre = `Producto ${String.fromCharCode(65 + (i % 26))}${Math.floor(i / 26) + 1}`;
-                const precio = (Math.random() * 1000).toFixed(2);
+            for (let i = 0; i < 50; i++) {
+                const id = String(i + 1).padStart(3, '0');
+                const nombre = productosReales[i];
+                const precioEntero = Math.floor(Math.random() * 10000) + 1000; // Entre 1000 y 11000
+                const precioFormateado = formatearPrecio(precioEntero);
                 productos.push(`
                     <tr>
                         <td contenteditable="true">${id}</td>
                         <td contenteditable="true">${nombre}</td>
-                        <td contenteditable="true" onblur="validarPrecio(this)">${precio}</td>
+                        <td contenteditable="true" onblur="validarPrecio(this)">${precioFormateado}</td>
                         <td><button onclick="eliminarFila(this)">Eliminar</button></td>
                     </tr>
                 `);
@@ -143,12 +158,16 @@
             return productos.join('');
         }
 
-        // Función para validar precio
+        // Función para validar precio (debe ser entero positivo)
         function validarPrecio(cell) {
-            const precio = parseFloat(cell.textContent);
+            let precioTexto = cell.textContent.replace(/\./g, ''); // Remover puntos para validar
+            const precio = parseInt(precioTexto);
             if (isNaN(precio) || precio < 0) {
-                mostrarAlerta('El precio debe ser un número positivo. Se ha reseteado a 0.00.');
-                cell.textContent = '0.00';
+                mostrarAlerta('El precio debe ser un número entero positivo. Se ha reseteado a 1.000.');
+                cell.textContent = '1.000';
+            } else {
+                // Reformatear si es válido
+                cell.textContent = formatearPrecio(precio);
             }
         }
 
@@ -160,7 +179,7 @@
             newRow.innerHTML = `
                 <td contenteditable="true">Nuevo ID</td>
                 <td contenteditable="true">Nuevo Nombre</td>
-                <td contenteditable="true" onblur="validarPrecio(this)">0.00</td>
+                <td contenteditable="true" onblur="validarPrecio(this)">1.000</td>
                 <td><button onclick="eliminarFila(this)">Eliminar</button></td>
             `;
             tbody.appendChild(newRow);
@@ -181,10 +200,11 @@
             const data = [];
             rows.forEach(row => {
                 const cells = row.querySelectorAll('td[contenteditable]');
+                const precioSinPuntos = cells[2].textContent.replace(/\./g, '');
                 data.push({
                     id: cells[0].textContent,
                     nombre: cells[1].textContent,
-                    precio: cells[2].textContent
+                    precio: precioSinPuntos
                 });
             });
             localStorage.setItem(`archivo-${table.id}`, JSON.stringify(data));
@@ -203,7 +223,7 @@
                     row.innerHTML = `
                         <td contenteditable="true">${item.id}</td>
                         <td contenteditable="true">${item.nombre}</td>
-                        <td contenteditable="true" onblur="validarPrecio(this)">${item.precio}</td>
+                        <td contenteditable="true" onblur="validarPrecio(this)">${formatearPrecio(parseInt(item.precio))}</td>
                         <td><button onclick="eliminarFila(this)">Eliminar</button></td>
                     `;
                     tbody.appendChild(row);
